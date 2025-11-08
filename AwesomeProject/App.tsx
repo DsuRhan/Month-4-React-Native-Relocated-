@@ -1,69 +1,82 @@
-import React, { useState } from "react";
-import { StatusBar, View, TouchableOpacity, Text, StyleSheet } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import HomeScreen from "./screens/HomeScreen";
-import CartScreen from "./screens/CartScreen";
-import { CartProvider, useCart } from "./contexts/CartContext";
+import React from "react";
+import { NavigationContainer, NavigatorScreenParams } from "@react-navigation/native";
+import { createNativeStackNavigator, NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { View, Text, Pressable } from "react-native";
+import "nativewind";
 
-function AppContent() {
-  const [showCart, setShowCart] = useState(false);
-  const { cart } = useCart();
-  const totalQty = cart.reduce((sum, i) => sum + i.quantity, 0);
+// ----- Type Definitions -----
+type MainTabsParamList = {
+  Catalog: undefined;
+  Profile: undefined;
+};
 
-  return (
-    <View style={styles.viewStyle}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {showCart ? "Your Cart" : "Mini E-Commerce"}
-        </Text>
-        <TouchableOpacity style={styles.cartBtn} onPress={() => setShowCart(!showCart)}>
-          <Text style={styles.cartText}>{showCart ? "← Back" : `🛒 (${totalQty})`}</Text>
-        </TouchableOpacity>
-      </View>
+type RootStackParamList = {
+  Onboarding1: undefined;
+  Onboarding2: undefined;
+  MainTabs: NavigatorScreenParams<MainTabsParamList>;
+};
 
-      {showCart ? <CartScreen /> : <HomeScreen />}
-    </View>
-  );
-}
+type Onboarding1NavProp = NativeStackNavigationProp<RootStackParamList, "Onboarding1">;
+type Onboarding2NavProp = NativeStackNavigationProp<RootStackParamList, "Onboarding2">;
 
+// ----- Navigators -----
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabsParamList>();
+
+// ----- Screens -----
+const Onboarding1 = ({ navigation }: { navigation: Onboarding1NavProp }) => (
+  <View className="flex-1 items-center justify-center bg-gray-100">
+    <Text className="text-lg font-bold text-gray-800 mb-4">Welcome to MiniShop!</Text>
+    <Pressable
+      className="bg-blue-500 px-4 py-2 rounded-lg"
+      onPress={() => navigation.navigate("Onboarding2")}
+    >
+      <Text className="text-white">Next</Text>
+    </Pressable>
+  </View>
+);
+
+const Onboarding2 = ({ navigation }: { navigation: Onboarding2NavProp }) => (
+  <View className="flex-1 items-center justify-center bg-gray-100">
+    <Text className="text-lg font-bold text-gray-800 mb-4">Find your favorite items easily.</Text>
+    <Pressable
+      className="bg-green-500 px-4 py-2 rounded-lg"
+      onPress={() => navigation.replace("MainTabs", { screen: "Catalog" })}
+    >
+      <Text className="text-white">Get Started</Text>
+    </Pressable>
+  </View>
+);
+
+const ProductCatalog = () => (
+  <View className="flex-1 items-center justify-center bg-white">
+    <Text className="text-xl font-semibold text-gray-800">🛍️ Product Catalog</Text>
+  </View>
+);
+
+const Profile = () => (
+  <View className="flex-1 items-center justify-center bg-white">
+    <Text className="text-xl font-semibold text-gray-800">👤 Profile</Text>
+  </View>
+);
+
+const MainTabs = () => (
+  <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Screen name="Catalog" component={ProductCatalog} />
+    <Tab.Screen name="Profile" component={Profile} />
+  </Tab.Navigator>
+);
+
+// ----- App Entry -----
 export default function App() {
   return (
-    <CartProvider>
-      <SafeAreaProvider>
-        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-        <AppContent />
-      </SafeAreaProvider>
-    </CartProvider>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Onboarding1" component={Onboarding1} />
+        <Stack.Screen name="Onboarding2" component={Onboarding2} />
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    elevation: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  cartBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "#007BFF",
-    borderRadius: 8,
-  },
-  cartText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  viewStyle:{ flex: 1}
-});
