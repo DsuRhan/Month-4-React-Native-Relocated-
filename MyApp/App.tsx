@@ -1,18 +1,15 @@
-import React, { useState } from "react";
+// App.tsx
+import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import RootNavigator from "./src/navigation/RootNavigator";
-
+import RootDrawer from "./src/navigation/RootDrawer";
+import { AuthProvider } from "./src/contexts/AuthContext";
 
 export default function App() {
-  // Global toggle untuk mengizinkan swipe membuka drawer
-  const [isDrawerSwipeEnabled, setDrawerSwipeEnabled] = useState(false);
-
   return (
-    <NavigationContainer>
-      <RootNavigator
-        isDrawerSwipeEnabled={isDrawerSwipeEnabled}
-        setDrawerSwipeEnabled={setDrawerSwipeEnabled}
-      />
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        <RootDrawer />
+      </NavigationContainer>
+    </AuthProvider>
   );
 }
