@@ -1,76 +1,61 @@
 import React from "react";
-import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { Text, Image, Pressable, StyleSheet } from "react-native";
+import { Product } from "../types/Product";
 
-interface ProductCardProps {
-  id: string;
-  title: string;
-  price: number;
-  image: string;
-  onPress?: (id: string) => void;
-  onAddToCart?: (id: string) => void;
+interface Props {
+  product: Product;
+  onPress: () => void;
 }
 
-export default function ProductCard({
-  id,
-  title,
-  price,
-  image,
-  onPress,
-  onAddToCart,
-}: ProductCardProps) {
+const ProductCard: React.FC<Props> = ({ product, onPress }) => {
   return (
-    <Pressable style={styles.card} onPress={() => onPress?.(id)}>
-      <Image source={{ uri: image }} style={styles.image} />
-      <View style={styles.info}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.price}>Rp {price.toLocaleString("id-ID")}</Text>
-        <Pressable
-          style={styles.button}
-          onPress={() => onAddToCart?.(id)}
-        >
-          <Text style={styles.btnText}>+ Keranjang</Text>
-        </Pressable>
-      </View>
+    <Pressable style={styles.card} onPress={onPress}>
+      <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
+      <Text style={styles.title} numberOfLines={1}>
+        {product.title}
+      </Text>
+      <Text style={styles.category} numberOfLines={1}>
+        {product.category}
+      </Text>
+      <Text style={styles.price}>${product.price}</Text>
     </Pressable>
   );
-}
+};
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    borderRadius: 10,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    marginBottom: 12,
     backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 8,
+    margin: 4,
+    width: "48%",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 2,
   },
   image: {
-    width: 90,
-    height: 90,
-  },
-  info: {
-    flex: 1,
-    padding: 10,
-    justifyContent: "space-between",
+    width: "100%",
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 6,
   },
   title: {
-    fontWeight: "600",
     fontSize: 14,
+    fontWeight: "600",
+    color: "#111",
+  },
+  category: {
+    fontSize: 12,
+    color: "#777",
   },
   price: {
-    color: "#2a9d8f",
-    fontWeight: "700",
-  },
-  button: {
-    backgroundColor: "#264653",
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginTop: 6,
-  },
-  btnText: {
-    color: "white",
-    textAlign: "center",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#22c55e",
+    marginTop: 4,
   },
 });
+
+export default ProductCard;

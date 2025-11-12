@@ -1,24 +1,27 @@
-// src/screens/ProfileScreen.tsx
-import React from "react";
-import { View, Text, Button } from "react-native";
-import { useAuth } from "../contexts/AuthContext";
+import React, { useEffect, useState } from "react";
+import { View, Text } from "react-native";
 
-export default function ProfileScreen() {
-  const { isAuthenticated, toggleAuth } = useAuth();
+export default function ProfileScreen({ navigation }: any) {
+  const [userId, setUserId] = useState<string>("");
+
+  useEffect(() => {
+    let parent = navigation;
+    while (parent?.getParent) {
+      const drawer = parent.getParent();
+      if (!drawer) break;
+      const active = drawer.getState?.().routes?.[drawer.getState().index];
+      if (active?.params?.userID) {
+        setUserId(active.params.userID);
+        break;
+      }
+      parent = drawer;
+    }
+  }, [navigation]);
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      {!isAuthenticated ? (
-        <>
-          <Text>Harap Login untuk mengakses</Text>
-          <Button title="Login" onPress={toggleAuth} />
-        </>
-      ) : (
-        <>
-          <Text>Selamat datang di halaman Profil!</Text>
-          <Button title="Logout" onPress={toggleAuth} />
-        </>
-      )}
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <Text>Profile Screen</Text>
+      <Text>User ID: {userId || "tidak ditemukan"}</Text>
     </View>
   );
 }

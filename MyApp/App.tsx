@@ -1,15 +1,14 @@
-// App.tsx
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import RootDrawer from "./src/navigation/RootDrawer";
-import { AuthProvider } from "./src/contexts/AuthContext";
+import AppNavigator from "./src/navigation/AppNavigator";
+import { ProductProvider } from "./src/contexts/ProductContext";
 
 export default function App() {
   return (
-    <AuthProvider>
+    <ProductProvider>
       <NavigationContainer>
-        <RootDrawer />
+        <AppNavigator />
       </NavigationContainer>
-    </AuthProvider>
+    </ProductProvider>
   );
 }
