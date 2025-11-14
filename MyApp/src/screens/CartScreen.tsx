@@ -1,76 +1,52 @@
-import React, { useState } from "react";
-import { View, Text, FlatList, Button } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useNetInfoStatus } from "../hooks/useNetInfoStatus";
+import apiClient from "../modules/api";
 
-interface CartItem {
-  id: number;
-  name: string;
-  quantity: number;
-}
+const CartScreen: React.FC = () => {
+  const { connectionType } = useNetInfoStatus();
+  const [total, setTotal] = useState<number | null>(null);
 
-export default function CartScreen() {
-  const [cart, setCart] = useState<CartItem[]>([
-    { id: 1, name: "Produk A", quantity: 2 },
-    { id: 2, name: "Produk B", quantity: 1 },
-  ]);
+  useEffect(() => {
+    let intervalId: number | null = null;
+    let mounted = true;
 
-  const increaseQuantity = (id: number) => {
-    setCart((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
-  };
+    const fetchCart = async () => {
+      try {
+        // use dummy cart 1
+        const res = await apiClient.get("/carts/1");
+        const data = res.data?.carts ?? res.data;
+        // dummyjson returns { id, products, total, discountedTotal, userId, totalProducts }
+        const totalVal = data?.total ?? res.data?.total ?? res.data;
+        if (mounted) setTotal(totalVal ?? null);
+      } catch (e: any) {
+        console.log("cart fetch err", e?.message || e);
+      }
+    };
 
-  const decreaseQuantity = (id: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
-        )
-        .filter((item) => item.quantity > 0)
-    );
-  };
+    // Only poll if not cellular
+    if (connectionType !== "cellular") {
+      fetchCart();
+      intervalId = setInterval(fetchCart, 15000);
+    } else {
+      console.log("Polling stopped due to cellular connection");
+    }
 
-  const clearCart = () => setCart([]);
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [connectionType]);
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 12 }}>
-        Keranjang Belanja
-      </Text>
-
-      {cart.length === 0 ? (
-        <Text style={{ textAlign: "center", marginTop: 40 }}>
-          Keranjang masih kosong
-        </Text>
-      ) : (
-        <FlatList
-          data={cart}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginVertical: 8,
-                marginBottom: 20,
-              }}
-            >
-              <Text>{item.name}</Text>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Button title="-" onPress={() => decreaseQuantity(item.id)} />
-                <Text style={{ marginHorizontal: 10 }}>{item.quantity}</Text>
-                <Button title="+" onPress={() => increaseQuantity(item.id)} />
-              </View>
-            </View>
-          )}
-        />
-      )}
-
-      <View style={{ marginTop: 20,marginBottom:40 }}>
-        <Button title="Hapus Semua" onPress={clearCart} />
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.title}>Cart</Text>
+      <Text>Total Belanja: {total ?? "Memuat..."}</Text>
+      <Text style={{ marginTop: 8 }}>Connection: {connectionType}</Text>
+      {connectionType === "cellular" && <Text style={{ color: "red", marginTop: 6 }}>Polling dimatikan untuk hemat kuota.</Text>}
     </View>
   );
-}
+};
+
+const styles = StyleSheet.create({ container: { flex: 1, padding: 12 }, title: { fontSize: 18, fontWeight: "700" } });
+export default CartScreen;

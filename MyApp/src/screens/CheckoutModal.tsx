@@ -1,21 +1,19 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Button } from "react-native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../modules/types";
 
-export default function CheckoutModal({ navigation }: any) {
+type Props = NativeStackScreenProps<RootStackParamList, "CheckoutModal">;
+
+const CheckoutModal: React.FC<Props> = ({ route, navigation }) => {
+  const productId = route.params?.productId;
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontWeight: "bold", fontSize: 18 }}>Checkout Modal</Text>
-      <Pressable
-        onPress={() => navigation.goBack()}
-        style={{
-          backgroundColor: "#2f86eb",
-          padding: 10,
-          marginTop: 16,
-          borderRadius: 8,
-        }}
-      >
-        <Text style={{ color: "white" }}>Tutup</Text>
-      </Pressable>
+    <View style={{ flex: 1, padding: 12, justifyContent: "center" }}>
+      <Text style={{ fontSize: 18, fontWeight: "700" }}>Checkout</Text>
+      <Text style={{ marginTop: 8 }}>Product ID: {productId ?? "-"}</Text>
+      <Button title="Confirm Purchase" onPress={() => { console.log("purchase simulated"); navigation.goBack(); }} />
+      <Button title="Cancel" onPress={() => navigation.goBack()} />
     </View>
   );
-}
+};
+export default CheckoutModal;

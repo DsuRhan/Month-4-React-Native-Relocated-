@@ -1,61 +1,34 @@
 import React from "react";
-import { Text, Image, Pressable, StyleSheet } from "react-native";
-import { Product } from "../types/Product";
+import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { Product } from "../modules/types";
 
-interface Props {
+type Props = {
   product: Product;
-  onPress: () => void;
-}
+  onPress?: () => void;
+};
 
 const ProductCard: React.FC<Props> = ({ product, onPress }) => {
   return (
-    <Pressable style={styles.card} onPress={onPress}>
-      <Image source={{ uri: product.thumbnail }} style={styles.image} resizeMode="cover" />
-      <Text style={styles.title} numberOfLines={1}>
-        {product.title}
-      </Text>
-      <Text style={styles.category} numberOfLines={1}>
-        {product.category}
-      </Text>
-      <Text style={styles.price}>${product.price}</Text>
-    </Pressable>
+    <TouchableOpacity style={styles.card} onPress={onPress}>
+      {product.thumbnail ? (
+        <Image source={{ uri: product.thumbnail }} style={styles.thumb} />
+      ) : null}
+      <View style={styles.body}>
+        <Text numberOfLines={1} style={styles.title}>{product.title}</Text>
+        <Text numberOfLines={2} style={styles.desc}>{product.description}</Text>
+        <Text style={styles.price}>${product.price}</Text>
+      </View>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 8,
-    margin: 4,
-    width: "48%",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  image: {
-    width: "100%",
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111",
-  },
-  category: {
-    fontSize: 12,
-    color: "#777",
-  },
-  price: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#22c55e",
-    marginTop: 4,
-  },
+  card: { flexDirection: "row", padding: 8, borderBottomWidth: 1, borderColor: "#eee", alignItems: "center" },
+  thumb: { width: 72, height: 72, borderRadius: 6, marginRight: 10, backgroundColor: "#f0f0f0" },
+  body: { flex: 1 },
+  title: { fontWeight: "600" },
+  desc: { color: "#666", fontSize: 12 },
+  price: { marginTop: 6, fontWeight: "700" },
 });
 
 export default ProductCard;

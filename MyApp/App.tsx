@@ -1,14 +1,11 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import AppNavigator from "./src/navigation/AppNavigator";
-import { ProductProvider } from "./src/contexts/ProductContext";
+import { SafeAreaView } from "react-native";
+import RootNavigator from "./src/navigation/RootNavigator";
 
 export default function App() {
   return (
-    <ProductProvider>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
-    </ProductProvider>
+    <SafeAreaView style={{ flex: 1 }}>
+      <RootNavigator />
+    </SafeAreaView>
   );
 }
