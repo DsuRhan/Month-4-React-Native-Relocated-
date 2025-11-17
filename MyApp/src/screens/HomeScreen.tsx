@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, FlatList, ActivityIndicator, StyleSheet } from "react-native";
 import { Product } from "../modules/types";
 import ProductCard from "../components/ProductCard";
 
@@ -45,10 +45,9 @@ const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
         data={items}
         keyExtractor={(i) => i.id.toString()}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => navigation?.navigate("ProductDetail", { productId: item.id })}>
-            <ProductCard product={item} />
-          </TouchableOpacity>
-        )}
+          
+            <ProductCard product={item} onPress={() => navigation?.navigate("ProductDetail", { productId: item.id })} />
+          )}
       />
     </View>
   );
