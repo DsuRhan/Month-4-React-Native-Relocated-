@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, ScrollView } from "react-native";
 import { Product } from "../modules/types";
 import ProductCard from "../components/ProductCard";
+import { loadCategoryCache, saveCategoryCache } from "../storage/cache"; // ★ Added
 
 const categoriesDefault = ["smartphones", "laptops", "fragrances", "skincare", "groceries"];
 
@@ -10,18 +11,34 @@ const CategoryTabs: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
+ useEffect(() => {
+  let mounted = true;
+  setLoading(true);
 
+  const loadData = async () => {
+    // 1. Coba ambil cache dulu
+    const cached = await loadCategoryCache(active);
+    if (cached && mounted) {
+      setItems(cached);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Fetch jika tidak ada cache
     fetch(`https://dummyjson.com/products/category/${active}`)
       .then((r) => r.json())
-      .then((d) => { if (mounted) setItems(d.products ?? []); })
+      .then(async (d) => {
+        if (!mounted) return;
+        setItems(d.products ?? []);
+        await saveCategoryCache(active, d.products ?? []); // ★ simpan cache
+      })
       .catch((e) => console.log(e))
-      .finally(() => { if (mounted) setLoading(false); });
+      .finally(() => mounted && setLoading(false));
+  };
 
-    return () => { mounted = false; };
-  }, [active]);
+  loadData();
+  return () => { mounted = false };
+}, [active]);
 
   return (
     <View style={{ flex: 1 }}>

@@ -1,8 +1,13 @@
-// App.tsx
+//App.tsx
+
 import React from "react";
 import { SafeAreaView, View, Text, StyleSheet } from "react-native";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { useNetInfoStatus } from "./src/hooks/useNetInfoStatus";
+import { loadAppInitialData } from "./src/storage/auth"; // ★ Added
+import { saveApiKeyToKeychain } from "./src/modules/api"; // ★ Added
+
+
 
 // ---- Error Boundary ----
 class AppErrorBoundary extends React.Component<any, { hasError: boolean }> {
@@ -43,7 +48,22 @@ const OfflineBanner = () => {
   return null;
 };
 
+
 export default function App() {
+  React.useEffect(() => {
+    // Load initial data like auth token (hybrid)
+    loadAppInitialData()
+      .then((d) => {
+        console.log("Initial storage:", d);
+      })
+      .catch((e) => {
+        console.log("Error loading initial data:", e);
+      });
+
+    // Save API key to Keychain (simulated static key)
+
+  saveApiKeyToKeychain(); // simpan API key sekali di awal
+}, []);
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <AppErrorBoundary>

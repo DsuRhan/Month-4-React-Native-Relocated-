@@ -1,3 +1,5 @@
+//src/screens/SettingsScreen.tsx
+
 import React, { useState } from "react";
 import { View, Text, Switch } from "react-native";
 

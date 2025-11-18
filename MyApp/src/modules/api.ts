@@ -1,5 +1,8 @@
-// api.ts
+// src/modules/api.ts
 import axios from "axios";
+import * as Keychain from "react-native-keychain";
+
+const SERVICE_API = "com.ecom:apiKey";
 
 const apiClient = axios.create({
   baseURL: "https://dummyjson.com",
@@ -7,28 +10,47 @@ const apiClient = axios.create({
   headers: { Accept: "application/json" },
 });
 
-apiClient.interceptors.request.use((config) => {
-  if (!config.headers) config.data.headers = {};
-  config.headers["X-Client-Platform"] = "React-Native";
-  return config;
-});
+// Request interceptor (API key only)
+apiClient.interceptors.request.use(
+  async (config) => {
+    if (!config.headers) config.data.headers = {};
+    config.headers["X-Client-Platform"] = "React-Native";
 
-apiClient.interceptors.response.use(
-  (response) => {
-    const url = response.config?.url ?? "";
-    if (url.includes("/auth/login") && response.status === 200) {
-      return {
-        ...response,
-        data: { success: true, token: "simulated_token_xyz" },
-        status: 200,
-      };
+    try {
+      const creds = await Keychain.getGenericPassword({ service: SERVICE_API });
+      if (creds) {
+        config.headers["X-API-Key"] = creds.password;
+      }
+    } catch (_) {
+      // API key optional → jangan blok request LOGIN lokal
     }
-    return response;
+
+    return config;
   },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor (tidak manipulasi login)
+apiClient.interceptors.response.use(
+  (response) => response,
   (error) => {
     console.log("API error:", error?.message);
     return Promise.reject(error);
   }
 );
+
+// API key helper
+export const saveApiKeyToKeychain = async (
+  apiKey: string = "API_KEY_SECRET_XYZ"
+) => {
+  try {
+    await Keychain.setGenericPassword("api_client", apiKey, {
+      service: SERVICE_API,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export default apiClient;
