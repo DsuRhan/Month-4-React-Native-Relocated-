@@ -7,7 +7,7 @@ const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
     try {
       await logout();
       // reset navigation stack ke Login
-      navigation?.reset({ index: 0, routes: [{ name: "Login" }] });
+      navigation?.reset({ index: 0, routes: [{ name: "Gate" }] });
     } catch (e) {
       console.log("Logout error:", e);
       Alert.alert("Logout gagal", "Gagal membersihkan data. Coba lagi.");

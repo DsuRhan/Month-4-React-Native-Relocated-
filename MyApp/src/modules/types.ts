@@ -16,10 +16,11 @@ export interface Product {
 // Navigation param list for React Navigation
 export type RootStackParamList = {
   MainTabs: undefined;
-  ProductDetail: { productId: number };
+  ProductDetail: { productId: string };
   Login: undefined;
-  CheckoutModal: { productId?: number } | undefined;
+  CheckoutModal: { productId?: string } | undefined;
   Settings: undefined;
+  Gate: undefined;
 };
 export type MainTabsParamList = {
   Home: undefined;

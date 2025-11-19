@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList, Product } from "../modules/types";
 import apiClient from "../modules/api";
 
+
 type Props = NativeStackScreenProps<RootStackParamList, "ProductDetail">;
 
 const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {

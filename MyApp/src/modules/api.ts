@@ -22,6 +22,7 @@ apiClient.interceptors.request.use(
         config.headers["X-API-Key"] = creds.password;
       }
     } catch (_) {
+      console.log("Failed to load API key from Keychain", _);
       // API key optional → jangan blok request LOGIN lokal
     }
 

@@ -1,56 +1,50 @@
-// screens/LoginScreen.tsx
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet } from "react-native";
+import apiClient from "../modules/api";
 import { saveToken } from "../storage/auth";
+
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/RootNavigator";
+
+type Nav = NativeStackNavigationProp<RootStackParamList, "Gate">;
 
 const LoginScreen: React.FC = () => {
   const [u, setU] = useState("");
   const [p, setP] = useState("");
   const [msg, setMsg] = useState("");
 
+  const nav = useNavigation<Nav>();
+
   const submit = async () => {
-    setMsg("");
-
-    // --- Custom login rule ---
-    if (!u.trim()) {
-      setMsg("Username tidak boleh kosong.");
-      return;
-    }
-    if (p.length < 4) {
-      setMsg("Password minimal 4 karakter.");
-      return;
-    }
-
     try {
-      // Buat token simulasi (bebas, bisa JWT nanti)
-      const fakeToken = `token_${Date.now()}_${u}`;
+      const res = await apiClient.post("/auth/login", {
+        username: u,
+        password: p,
+      });
 
-      // Simpan ke Keychain
-      await saveToken(fakeToken);
+      const token = res.data?.token;
+      if (!token) throw new Error("Token kosong!");
 
-      setMsg("Login berhasil. Token disimpan.");
+      await saveToken(token);
+      setMsg("Login berhasil.");
+
+      nav.reset({
+        index: 0,
+        routes: [{ name: "Gate" }],
+      });
+
     } catch (e: any) {
-      console.log("login error:", e?.message || e);
+      console.log("login err", e?.message || e);
       setMsg("Login gagal.");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Custom Login</Text>
-      <TextInput
-        placeholder="username"
-        value={u}
-        onChangeText={setU}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="password"
-        value={p}
-        secureTextEntry
-        onChangeText={setP}
-        style={styles.input}
-      />
+      <Text style={styles.title}>Login</Text>
+      <TextInput placeholder="username" value={u} onChangeText={setU} style={styles.input} />
+      <TextInput placeholder="password" value={p} secureTextEntry onChangeText={setP} style={styles.input} />
       <Button title="Login" onPress={submit} />
       <Text style={{ marginTop: 8 }}>{msg}</Text>
     </View>

@@ -1,10 +1,9 @@
-//src/navigation/RootNavigator.tsx
+// RootNavigator.tsx
 
-import React, { useEffect, useState } from "react";                     // ★ Modified
+import React, { useEffect, useState } from "react";                     
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { RootStackParamList, MainTabsParamList } from "../modules/types";
 import { Alert } from "react-native";
 
 import HomeScreen from "../screens/HomeScreen";
@@ -17,45 +16,22 @@ import LoginScreen from "../screens/LoginScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import CheckoutModal from "../screens/CheckoutModal";
 
-import { getToken } from "../storage/auth";     // ★ Added
+import { getToken } from "../storage/auth";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tabs = createBottomTabNavigator<MainTabsParamList>();
-
-
-// --- Auth Gate ---
-const AuthGate = () => {
-  const [loading, setLoading] = useState(true);
-  const [hasToken, setHasToken] = useState(false);
-  
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const tk = await getToken();
-        setHasToken(!!tk);
-      } catch (e: any) {
-        // Jika terjadi masalah akses (access denied), getToken sudah menanganinya
-        // namun berjaga-jaga tampilkan alert
-        const errStr = String(e).toLowerCase();
-        if (errStr.includes("access denied") || errStr.includes("user not authenticated")) {
-          Alert.alert("Keamanan perangkat berubah", "Mohon login ulang.");
-          setHasToken(false);
-        } else {
-          console.log("AuthGate load error:", e);
-          setHasToken(false);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  if (loading) return null;
-
-  return hasToken ? <MainTabs /> : <LoginScreen />;
+export type RootStackParamList = {
+  Gate: undefined;
+  ProductDetail: { productId: string };
+  Settings: undefined;
+  CheckoutModal: undefined;
 };
 
+export type ProductDetailScreenProps = NativeStackScreenProps<RootStackParamList, "ProductDetail">;
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tabs = createBottomTabNavigator();
+
+// ---------------- MAIN TABS ---------------- //
 const MainTabs = () => (
   <Tabs.Navigator screenOptions={{ headerShown: false }}>
     <Tabs.Screen name="Home" component={HomeScreen} />
@@ -66,23 +42,46 @@ const MainTabs = () => (
   </Tabs.Navigator>
 );
 
-const RootNavigator = () => (
-  <NavigationContainer>
-    <Stack.Navigator>
-      <Stack.Screen
-        name="MainTabs"
-        component={AuthGate}                 // ★ Modified
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Group screenOptions={{ presentation: "modal" }}>
-        <Stack.Screen name="CheckoutModal" component={CheckoutModal} />
-      </Stack.Group>
-    </Stack.Navigator>
-  </NavigationContainer>
-);
+// ---------------- AUTH GATE ---------------- //
+const AuthGate = () => {
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const tk = await getToken();
+        setToken(tk);
+      } catch (e) {
+        Alert.alert("Auth Error", "Gagal memuat token.", e as any);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-export default RootNavigator;
+  if (loading) return null;
+
+  return token ? <MainTabs /> : <LoginScreen />;
+};
+
+export default function RootNavigator() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        
+        {/* GATE BUKAN SCREEN TERPISAH */}
+        <Stack.Screen name="Gate" component={AuthGate} />
+
+        <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />{/*Type 'FC<Props>' is not assignable to type 'ScreenComponentType<RootStackParamList, "ProductDetail"> | undefined'.
+  Type 'FunctionComponent<Props>' is not assignable to type 'FunctionComponent<{}>'.
+    Type '{}' is missing the following properties from type 'Props': navigation, route*/}
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+
+        <Stack.Group screenOptions={{ presentation: "modal" }}>
+          <Stack.Screen name="CheckoutModal" component={CheckoutModal} />
+        </Stack.Group>
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
