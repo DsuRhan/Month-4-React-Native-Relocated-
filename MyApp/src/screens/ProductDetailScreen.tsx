@@ -1,36 +1,38 @@
-// ProductDetailScreen.tsx
-import React, { useEffect, useState } from "react";
+// src/screens/ProductDetailScreen.tsx
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, ActivityIndicator, Image, ScrollView, StyleSheet, Button } from "react-native";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList, Product } from "../modules/types";
-import apiClient from "../modules/api";
 
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/RootNavigator";
+import { Product } from "../modules/types";
+import apiClient from "../modules/api";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ProductDetail">;
 
 const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { productId } = route.params;
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadDetail = React.useCallback(async () => {
-  setErrorMessage(null);
-  try {
-    const res = await apiClient.get(`/products/${productId}`);
-    const data = res.data?.product ?? res.data;
-    setProduct(data);
-  } catch (err: any) {
-    setErrorMessage(err.message || "Unknown error");
-  } finally {
-    setLoading(false);
-  }
-}, [productId]);
-
+  const loadDetail = useCallback(async () => {
+    setErrorMessage(null);
+    try {
+      const res = await apiClient.get(`/products/${productId}`);
+      const data = res.data?.product ?? res.data;
+      setProduct(data);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
 
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
+
   if (loading) return <ActivityIndicator style={{ marginTop: 20 }} size="large" />;
 
   if (errorMessage)
@@ -47,7 +49,9 @@ const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <ScrollView style={{ flex: 1, padding: 12 }}>
-      {product.thumbnail ? <Image source={{ uri: product.thumbnail }} style={styles.thumb} /> : null}
+      {product.thumbnail && (
+        <Image source={{ uri: product.thumbnail }} style={styles.thumb} />
+      )}
       <Text style={styles.title}>{product.title}</Text>
       <Text style={styles.price}>${product.price}</Text>
       <Text style={styles.desc}>{product.description}</Text>

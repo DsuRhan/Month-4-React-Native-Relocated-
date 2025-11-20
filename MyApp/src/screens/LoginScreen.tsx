@@ -1,6 +1,6 @@
+// src/screens/LoginScreen.tsx
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet } from "react-native";
-import apiClient from "../modules/api";
 import { saveToken } from "../storage/auth";
 
 import { useNavigation } from "@react-navigation/native";
@@ -16,29 +16,31 @@ const LoginScreen: React.FC = () => {
 
   const nav = useNavigation<Nav>();
 
-  const submit = async () => {
-    try {
-      const res = await apiClient.post("/auth/login", {
-        username: u,
-        password: p,
-      });
-
-      const token = res.data?.token;
-      if (!token) throw new Error("Token kosong!");
-
-      await saveToken(token);
-      setMsg("Login berhasil.");
-
-      nav.reset({
-        index: 0,
-        routes: [{ name: "Gate" }],
-      });
-
-    } catch (e: any) {
-      console.log("login err", e?.message || e);
-      setMsg("Login gagal.");
+ const submit = async () => {
+  try {
+    // login bebas — u & p boleh string apa saja
+    if (!u || !p) {
+      setMsg("Masukkan username & password dulu.");
+      return;
     }
-  };
+
+    // generate token sederhana
+    const fakeToken = `token-${Date.now()}`;
+
+    await saveToken(fakeToken);
+    setMsg("Login berhasil.");
+
+    nav.reset({
+      index: 0,
+      routes: [{ name: "Gate" }],
+    });
+
+  } catch (e: any) {
+    console.log("login err", e?.message || e);
+    setMsg("Login gagal.");
+  }
+};
+
 
   return (
     <View style={styles.container}>
