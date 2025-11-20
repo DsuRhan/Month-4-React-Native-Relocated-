@@ -2,77 +2,90 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Button } from "react-native";
 import { useNetInfoStatus } from "../hooks/useNetInfoStatus";
 import apiClient from "../modules/api";
-import { loadCart, updateCartMerge } from "../storage/cart"; // ★ Added
+import { loadCart, updateCartMerge } from "../storage/cart";
 
 
 const CartScreen: React.FC = () => {
   const { connectionType } = useNetInfoStatus();
 
+  
   // local UI state
-  const [total, setTotal] = useState<number | null>(null);
+  const [total, setTotal] = useState<number>(0);
   const [localCart, setLocalCart] = useState<any>(null);
-  const [errorQuota, ] = useState<boolean>(false);
+  const [errorQuota] = useState<boolean>(false);
 
-
-  // 1. load local cart first (cache-first)
+  // -------------------------------------------------------
+  // 1. LOAD LOCAL CART (versi baru: loadCart selalu return object)
+  // -------------------------------------------------------
   useEffect(() => {
     (async () => {
       try {
-        const saved = await loadCart();
-        if (saved) {
-          setLocalCart(saved);
-          setTotal(saved?.total ?? null);  
-        }
+        const saved = await loadCart(); // ALWAYS returns object
+        setLocalCart(saved);
+        setTotal(saved.total ?? 0); //Property 'total' does not exist on type 'any[]'.
       } catch (e: any) {
         console.log("Load cart local err:", e?.message);
       }
     })();
   }, []);
 
+  // -------------------------------------------------------
+  // 2. POLLING ONLINE CART (stop if cellular)
+  // -------------------------------------------------------
+ useEffect(() => {
+  let intervalId: number | null = null;
+  let mounted = true;
 
-  // 2. polling online cart when not cellular
-  useEffect(() => {
-    let intervalId: number | null = null;
-    let mounted = true;
+  const normalizeCartTotal = (raw: any): number => {
+    if (!raw) return 0;
 
-    const fetchCart = async () => {
-      try {
-        const res = await apiClient.get("/carts/1");
-
-        const data = res.data?.carts ?? res.data; 
-        const totalVal =
-          data?.total ?? res.data?.total ?? res.data;
-
-        if (mounted) {
-          setTotal(totalVal ?? null);
-
-          // sync to local cache
-          await updateCartMerge({ total: totalVal });
-
-          // update local cart state
-          const localUpdated = await loadCart();
-          setLocalCart(localUpdated);
-        }
-      } catch (e: any) {
-        console.log("cart fetch err", e?.message || e);
-      }
-    };
-
-    if (connectionType !== "cellular") {
-      fetchCart();
-      intervalId = setInterval(fetchCart, 15000);
-    } else {
-      console.log("Polling stopped due to cellular connection");
+    if (Array.isArray(raw)) {
+      const first = raw[0];
+      return first?.total ?? 0;
     }
 
-    return () => {
-      mounted = false;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [connectionType]);
+    if (typeof raw === "object") {
+      return raw.total ?? 0;
+    }
+
+    return 0;
+  };
+
+  const fetchCart = async () => {
+    try {
+      const res = await apiClient.get("/carts/1");
+
+      const raw = res.data?.carts ?? res.data;
+      const totalVal = normalizeCartTotal(raw);
+
+      if (mounted) {
+        setTotal(totalVal);
+
+        await updateCartMerge({ total: totalVal });
+
+        const localUpdated = await loadCart();
+        setLocalCart(localUpdated);
+      }
+    } catch (e: any) {
+      console.log("cart fetch err:", e?.message || e);
+    }
+  };
+
+  if (connectionType !== "cellular") {
+    fetchCart();
+    intervalId = setInterval(fetchCart, 15000);
+  }
+
+  return () => {
+    mounted = false;
+    if (intervalId) clearInterval(intervalId);
+  };
+}, [connectionType]);
 
 
-  // 3. example small change: +1 item to simulate mergeItem
+  // -------------------------------------------------------
+  // 3. Simulate add item → merge dummyItems
+  // -------------------------------------------------------
   const simulateAddItem = async () => {
     try {
       const newData = {
@@ -81,17 +94,22 @@ const CartScreen: React.FC = () => {
       };
 
       await updateCartMerge(newData);
+
+      // reload snapshot
+      const updated = await loadCart();
+      setLocalCart(updated);
     } catch (e: any) {
       console.log("simulate add item error:", e?.message);
     }
   };
 
-
+  // -------------------------------------------------------
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Cart</Text>
 
-      <Text>Total Belanja: {total ?? "Memuat..."}</Text>
+      <Text>Total Belanja: {total}</Text>
+
       <Text style={{ marginTop: 8 }}>
         Connection: {connectionType}
       </Text>
@@ -103,12 +121,17 @@ const CartScreen: React.FC = () => {
       )}
 
       <View style={{ marginTop: 20 }}>
-        <Button title="Tambah Item (Simulasi mergeItem)" onPress={simulateAddItem} />
+        <Button
+          title="Tambah Item (Simulasi mergeItem)"
+          onPress={simulateAddItem}
+        />
       </View>
 
       <View style={{ marginTop: 15 }}>
         <Text style={{ fontSize: 13, color: "#555" }}>
-          Local Cart Snapshot: {JSON.stringify(localCart, null, 2)}
+          Local Cart Snapshot:
+          {"\n"}
+          {JSON.stringify(localCart, null, 2)}
         </Text>
       </View>
 

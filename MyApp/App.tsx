@@ -5,6 +5,9 @@ import { SafeAreaView, View, Text, StyleSheet } from "react-native";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { useNetInfoStatus } from "./src/hooks/useNetInfoStatus";
 import { loadAppInitialData } from "./src/storage/auth";
+import { Linking } from "react-native";
+import { addToCartById } from "./src/storage/cart";
+
 
 // ------------------------------------------------------
 // GLOBAL ERROR BOUNDARY
@@ -61,10 +64,42 @@ const OfflineBanner = () => {
   return null;
 };
 
+
+
 // ------------------------------------------------------
 // APP ROOT
 // ------------------------------------------------------
 export default function App() {
+  // ------------------------------------------------------
+// DEEP LINK WARM START LISTENER (add-to-cart)
+// ------------------------------------------------------
+React.useEffect(() => {
+  const handler = (event: { url: string }) => {
+    try {
+      const url = event.url; // contoh: miniecom://add-to-cart/55
+
+      if (url.includes("add-to-cart")) {
+        const idStr = url.split("/").pop();
+        const id = Number(idStr);
+
+        if (!isNaN(id)) {
+          addToCartById(id)
+            .then(() => console.log("Added via deep link:", id))
+            .catch((e) => console.log("Failed add:", e));
+        }
+      }
+    } catch (e) {
+      console.log("Deep link error:", e);
+    }
+  };
+
+  const sub = Linking.addEventListener("url", handler);
+
+  return () => {
+    sub.remove(); // cleanup listener
+  };
+}, []);
+
   React.useEffect(() => {
     loadAppInitialData()
       .then((d) => console.log("Initial storage:", d))

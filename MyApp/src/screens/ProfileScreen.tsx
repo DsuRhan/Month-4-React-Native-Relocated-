@@ -1,3 +1,4 @@
+// src/screens/ProfileScreen.tsx
 import React, { useEffect } from "react";
 import { View, Text, Button, Alert } from "react-native";
 import { logout } from "../storage/auth";

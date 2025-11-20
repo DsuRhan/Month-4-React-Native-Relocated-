@@ -6,6 +6,7 @@ import * as Keychain from "react-native-keychain";
 const TOKEN_KEY = "auth_token";
 const PREFS_KEY = "user_prefs";
 const NOTIF_KEY = "notif_status";
+const TOKEN_EXP_KEY = "token_expired_at";
 
 const SERVICE_TOKEN = "com.ecom:userToken";
 
@@ -14,6 +15,24 @@ const SERVICE_TOKEN = "com.ecom:userToken";
 // --------------------------------------------------------
 export const saveToken = async (token: string) => {
   await Keychain.setGenericPassword("user", token, { service: SERVICE_TOKEN });
+};
+
+// --------------------------------------------------------
+// SAVE TOKEN EXPIRY (timestamp dalam ms)
+// --------------------------------------------------------
+export const saveTokenExpiry = async (timestamp: number) => {
+  await AsyncStorage.setItem(TOKEN_EXP_KEY, String(timestamp));
+};
+
+// --------------------------------------------------------
+// GET TOKEN EXPIRY
+// --------------------------------------------------------
+export const getTokenExpiry = async (): Promise<number | null> => {
+  const raw = await AsyncStorage.getItem(TOKEN_EXP_KEY);
+  if (!raw) return null;
+
+  const asNum = Number(raw);
+  return isNaN(asNum) ? null : asNum;
 };
 
 // --------------------------------------------------------
@@ -38,29 +57,54 @@ export const getToken = async () => {
 };
 
 // --------------------------------------------------------
-// HYBRID INITIAL LOADER (opsional, dipanggil App.tsx)
+// CHECK EXPIRED & AUTO-LOGOUT
+// --------------------------------------------------------
+export const isTokenExpired = async (): Promise<boolean> => {
+  const exp = await getTokenExpiry();
+  if (!exp) return false; // jika tidak ada expiry → treat as valid
+
+  return Date.now() > exp;
+};
+
+export const validateTokenOrLogout = async () => {
+  const expired = await isTokenExpired();
+  if (!expired) return true;
+
+  await logout();
+  return false;
+};
+
+// --------------------------------------------------------
+// HYBRID INITIAL LOADER
 // --------------------------------------------------------
 export const loadAppInitialData = async () => {
   try {
-    const [tokenRes, prefs] = await Promise.all([
+    const [tokenRes, prefs, exp] = await Promise.all([
       Keychain.getGenericPassword({ service: SERVICE_TOKEN }),
       AsyncStorage.multiGet([PREFS_KEY, NOTIF_KEY]),
+      AsyncStorage.getItem(TOKEN_EXP_KEY),
     ]);
 
     const map: any = {};
 
     map[TOKEN_KEY] = tokenRes ? tokenRes.password : null;
+    map[TOKEN_EXP_KEY] = exp && !isNaN(Number(exp)) ? Number(exp) : null;
 
     prefs.forEach(([key, val]) => {
-      map[key] = val;
+      try {
+        map[key] = val ? val : null; // tidak force JSON parse
+      } catch {
+        map[key] = null;
+      }
     });
 
     return map;
-  } catch (e: any) {
+  } catch (e) {
     console.log("Error loading initial app data:", e);
     return { [TOKEN_KEY]: null };
   }
 };
+
 
 // --------------------------------------------------------
 // LOGOUT
@@ -70,5 +114,5 @@ export const logout = async () => {
     await Keychain.resetGenericPassword({ service: SERVICE_TOKEN });
   } catch {}
 
-  await AsyncStorage.multiRemove([TOKEN_KEY, PREFS_KEY, NOTIF_KEY]);
+  await AsyncStorage.multiRemove([TOKEN_KEY, PREFS_KEY, NOTIF_KEY, TOKEN_EXP_KEY]);
 };

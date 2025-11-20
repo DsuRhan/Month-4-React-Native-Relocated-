@@ -1,6 +1,9 @@
+// src/components/ProductCard.tsx
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { Product } from "../modules/types";
+import apiClient from "../modules/api";
+import { saveProductDetailCache } from "../storage/cache";
 
 type Props = {
   product: Product;
@@ -8,11 +11,25 @@ type Props = {
 };
 
 const ProductCard: React.FC<Props> = ({ product, onPress }) => {
+  const handlePress = async () => {
+    try {
+      // Prefetch detail → percepat navigasi
+      const res = await apiClient.get(`/products/${product.id}`);
+      const data = res.data?.product ?? res.data;
+      await saveProductDetailCache(product.id, data);
+    } catch {
+      // gagal prefetch → lewati, tetap jalan
+    }
+
+    onPress?.();
+  };
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={handlePress}>
       {product.thumbnail ? (
         <Image source={{ uri: product.thumbnail }} style={styles.thumb} />
       ) : null}
+
       <View style={styles.body}>
         <Text numberOfLines={1} style={styles.title}>{product.title}</Text>
         <Text numberOfLines={2} style={styles.desc}>{product.description}</Text>
@@ -23,8 +40,20 @@ const ProductCard: React.FC<Props> = ({ product, onPress }) => {
 };
 
 const styles = StyleSheet.create({
-  card: { flexDirection: "row", padding: 8, borderBottomWidth: 1, borderColor: "#eee", alignItems: "center" },
-  thumb: { width: 72, height: 72, borderRadius: 6, marginRight: 10, backgroundColor: "#f0f0f0" },
+  card: {
+    flexDirection: "row",
+    padding: 8,
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+    alignItems: "center",
+  },
+  thumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 6,
+    marginRight: 10,
+    backgroundColor: "#f0f0f0",
+  },
   body: { flex: 1 },
   title: { fontWeight: "600" },
   desc: { color: "#666", fontSize: 12 },

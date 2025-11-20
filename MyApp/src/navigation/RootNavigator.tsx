@@ -3,7 +3,8 @@ import React, { useEffect, useState } from "react";
 import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Alert, Linking } from "react-native";
+import { Linking } from "react-native";
+
 
 import HomeScreen from "../screens/HomeScreen";
 import CategoryTabs from "../screens/CategoryTabs";
@@ -14,8 +15,11 @@ import ProductDetailScreen from "../screens/ProductDetailScreen";
 import LoginScreen from "../screens/LoginScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import CheckoutModal from "../screens/CheckoutModal";
+// RootNavigator.tsx
+import ProtectedRoute from "./ProtectedRoute";
 
-import { getToken } from "../storage/auth";
+
+import { getToken, validateTokenOrLogout } from "../storage/auth";
 
 // -------------------------------------
 // TYPE DEFINITIONS
@@ -25,6 +29,7 @@ export type RootStackParamList = {
   ProductDetail: { productId: string };
   Settings: undefined;
   CheckoutModal: { productId?: string };
+  Cart: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -51,19 +56,20 @@ const AuthGate = () => {
 
   useEffect(() => {
     (async () => {
-      try {
-        const tk = await getToken();
-        setToken(tk);
-      } catch (e) {
-        Alert.alert("Auth Error", "Gagal memuat token.", e as any);
-      } finally {
+      const stillValid = await validateTokenOrLogout();
+      if (!stillValid) {
+        setToken(null);
         setLoading(false);
+        return;
       }
+
+      const tk = await getToken();
+      setToken(tk);
+      setLoading(false);
     })();
   }, []);
 
   if (loading) return null;
-
   return token ? <MainTabs /> : <LoginScreen />;
 };
 
@@ -88,68 +94,66 @@ const linking = {
 export default function RootNavigator() {
   // handle warm start (app in background) and raw URL parsing
   useEffect(() => {
-    const handleUrl = (event: { url: string }) => {
-      try {
-        const url = event.url;
-        // Normalize: remove scheme if present
-        // Examples:
-        // ecommerceapp://produk/123
-        // https://ecommerceapp.com/produk/123
-        const parsed = url.replace(/.*?:\/\//g, ""); // e.g. "produk/123" or "ecommerceapp.com/produk/123"
-        // handle possible host in https
-        const path = parsed.includes("/")
-          ? parsed.substring(parsed.indexOf("/") + 1) // skip host when present
-          : parsed;
+    const handleUrl = async (event: { url: string }) => {
+  try {
+    const url = event.url;
+    const parsed = url.replace(/.*?:\/\//g, "");
+    const path = parsed.includes("/") 
+      ? parsed.substring(parsed.indexOf("/") + 1)
+      : parsed;
 
-        // path may be like "produk/123" or "profil/user123" or "keranjang"
-        if (path.startsWith("produk/")) {
-          const productId = path.split("/")[1];
-          if (productId && navigationRef.isReady()) {
-            navigationRef.navigate("ProductDetail", { productId });
-          }
-          return;
-        }
+    const token = await getToken();   // CHECK AUTH
 
-        if (path.startsWith("profil/")) {
-          const userId = path.split("/")[1];
-          if (userId && navigationRef.isReady()) {
-            // navigate to Profile tab — ProfileScreen will validate userId
-            navigationRef.navigate("Gate");
-            // small delay to ensure Gate mounted — but if navigationRef ready, main tabs should exist
-            setTimeout(() => {
-              // try navigating into Profile tab by name (tabs are inside Gate's component)
-              // We can't directly target nested navigator without nested action; using top-level 'Gate' fallback
-              // Better UX: ProfileScreen reads initial params from Linking if provided
-            }, 300);
-          }
-          return;
-        }
-
-        if (path.startsWith("keranjang") || path === "keranjang") {
-          if (navigationRef.isReady()) {
-            navigationRef.navigate("Gate"); // open gate (tabs) first
-            setTimeout(() => {
-              // try to navigate to Cart tab (if nested navigation action available)
-              // We'll attempt to navigate again to Cart (if MainTabs mounted, this will work)
-              try {
-                navigationRef.navigate("Cart" as any);
-              } catch (e) {
-                // fallback handled by Gate/MainTabs initial route
-                console.log("Navigasi ke Cart gagal:", e);
-              }
-            }, 300);
-          }
-          return;
-        }
-
-        // fallback: open home
+    // --- PRODUK (protected) ---
+    if (path.startsWith("produk/")) {
+      const productId = path.split("/")[1];
+      if (!token) {
+        // not logged in → redirect to login
         if (navigationRef.isReady()) {
           navigationRef.navigate("Gate");
         }
-      } catch (err) {
-        console.log("link handler err:", err);
+        return;
       }
-    };
+
+      if (navigationRef.isReady()) {
+        navigationRef.navigate("ProductDetail", { productId });
+      }
+      return;
+    }
+
+    // --- KERANJANG (protected) ---
+    if (path.startsWith("keranjang")) {
+      if (!token) {
+        navigationRef.navigate("Gate");
+        return;
+      }
+
+      if (navigationRef.isReady()) {
+        navigationRef.navigate("Gate");
+        setTimeout(() => navigationRef.navigate("Cart" as any), 300);
+      }
+      return;
+    }
+
+    // --- CHECKOUT (protected) ---
+    if (path.startsWith("checkout")) {
+      if (!token) {
+        navigationRef.navigate("Gate");
+        return;
+      }
+
+      if (navigationRef.isReady()) {
+        navigationRef.navigate("CheckoutModal" as any);
+      }
+      return;
+    }
+
+    // fallback
+    navigationRef.navigate("Gate");
+  } catch (err) {
+    console.log("link handler err:", err);
+  }
+};
 
     // subscribe
     const sub = Linking.addEventListener("url", handleUrl);
@@ -174,8 +178,21 @@ export default function RootNavigator() {
         <Stack.Screen name="Gate" component={AuthGate} />
         <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Cart">
+  {({}) => (
+    <ProtectedRoute>
+      <CartScreen />
+    </ProtectedRoute>
+  )}
+</Stack.Screen>
         <Stack.Group screenOptions={{ presentation: "modal" }}>
-          <Stack.Screen name="CheckoutModal" component={CheckoutModal} />
+<Stack.Screen name="CheckoutModal">
+  {({ navigation, route }: any) => (
+    <ProtectedRoute>
+      <CheckoutModal navigation={navigation} route={route} />
+    </ProtectedRoute>
+  )}
+</Stack.Screen>
         </Stack.Group>
       </Stack.Navigator>
     </NavigationContainer>
