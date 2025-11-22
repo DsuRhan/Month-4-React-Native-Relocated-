@@ -1,27 +1,33 @@
-// src/screens/ProfileScreen.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, Button, Alert, Image, TouchableOpacity } from "react-native";
-import { logout } from "../storage/auth";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { launchImageLibrary } from "react-native-image-picker";
+
+import { logout } from "../storage/auth";
+
+// utils
+import { saveBase64Preview, loadBase64Preview } from "../utils/saveBase64Preview";
+import { openCameraWithFallback } from "../utils/openCameraWithFallback";
+import { uploadCameraImage } from "../utils/uploadCameraImage";
 
 const isValidUserId = (id?: string) => {
   if (!id) return false;
   return /^[a-zA-Z0-9_-]{3,30}$/.test(id);
 };
 
-const ProfileScreen: React.FC<any> = ({ navigation, route }: any) => {
+const ProfileScreen: React.FC<any> = ({ navigation, route }) => {
   const [profileBase64, setProfileBase64] = useState<string | null>(null);
 
   const incomingUserId = route?.params?.userId;
 
+  // Load preview base64 from AsyncStorage
   useEffect(() => {
     (async () => {
-      const saved = await AsyncStorage.getItem("@profile:previewBase64");
+      const saved = await loadBase64Preview();
       if (saved) setProfileBase64(saved);
     })();
   }, []);
 
+  // Deep link validation
   useEffect(() => {
     if (incomingUserId) {
       if (!isValidUserId(incomingUserId)) {
@@ -33,7 +39,8 @@ const ProfileScreen: React.FC<any> = ({ navigation, route }: any) => {
     }
   }, [incomingUserId, navigation]);
 
-  const pickProfileImage = () => {
+  // pick from gallery — small preview only
+  const pickProfileFromLibrary = async () => {
     launchImageLibrary(
       {
         mediaType: "photo",
@@ -44,29 +51,51 @@ const ProfileScreen: React.FC<any> = ({ navigation, route }: any) => {
       async (res) => {
         if (res.didCancel || res.errorCode) return;
 
-        const base64 = res.assets?.[0]?.base64 ?? "";
+        const base64 = res.assets?.[0]?.base64;
+        if (!base64) return;
+
         setProfileBase64(base64);
-        await AsyncStorage.setItem("@profile:previewBase64", base64);
+
+        // save preview using util
+        await saveBase64Preview(base64);
       }
     );
+  };
+
+  // open camera with fallback + upload (as required)
+  const openCamera = async () => {
+    try {
+      const img = await openCameraWithFallback();
+      if (!img) return;
+
+      await uploadCameraImage(img);
+
+      if (img.base64) {
+        setProfileBase64(img.base64);
+        await saveBase64Preview(img.base64);
+      }
+    } catch (err) {
+      console.log("Camera err:", err);
+    }
   };
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigation?.reset({ index: 0, routes: [{ name: "Gate" }] });
+      navigation.reset({ index: 0, routes: [{ name: "Gate" }] });
     } catch (e) {
-      console.log("Logout err", (e as any)?.message || e);
+      console.log("Logout err:", e);
       Alert.alert("Logout gagal", "Gagal membersihkan data. Coba lagi.");
     }
   };
 
   return (
     <View style={{ flex: 1, padding: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "700" }}>Profile (Demo)</Text>
+      <Text style={{ fontSize: 18, fontWeight: "700" }}>Profile</Text>
 
+      {/* avatar */}
       <TouchableOpacity
-        onPress={pickProfileImage}
+        onPress={pickProfileFromLibrary}
         style={{ alignSelf: "center", marginTop: 20 }}
       >
         {profileBase64 ? (
@@ -90,10 +119,14 @@ const ProfileScreen: React.FC<any> = ({ navigation, route }: any) => {
         )}
       </TouchableOpacity>
 
-      <Text style={{ marginTop: 8 }}>Nama: Master</Text>
+      <View style={{ marginTop: 10, alignSelf: "center" }}>
+        <Button title="Ambil Foto dari Kamera" onPress={openCamera} />
+      </View>
+
+      <Text style={{ marginTop: 16 }}>Nama: Master</Text>
       <Text>Email: master@example.com</Text>
 
-      <Button title="Settings" onPress={() => navigation?.navigate("Settings")} />
+      <Button title="Settings" onPress={() => navigation.navigate("Settings")} />
 
       <View style={{ marginTop: 12 }}>
         <Button title="Logout" onPress={handleLogout} />

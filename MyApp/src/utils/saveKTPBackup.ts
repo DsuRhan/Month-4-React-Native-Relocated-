@@ -6,11 +6,11 @@ import {
 } from "react-native";
 import { launchCamera } from "react-native-image-picker";
 
-export const requestStoragePermissionAndSave = async () => {
+export const requestStoragePermissionAndSave = async (): Promise<string | null> => {
   try {
+    // iOS tidak butuh izin untuk save ke Photos
     if (Platform.OS !== "android") {
-      // iOS tidak butuh permission untuk saveToPhotos
-      return openCamera(true);
+      return await openKTPBackupCamera(true);
     }
 
     const granted = await PermissionsAndroid.request(
@@ -26,30 +26,44 @@ export const requestStoragePermissionAndSave = async () => {
     );
 
     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-      return openCamera(true); // akan save ke galeri
+      // Izinkan → save ke galeri
+      return await openKTPBackupCamera(true);
     } else {
+      // Ditolak → beri warning, lalu buka kamera biasa (tidak save)
       Alert.alert(
         "Peringatan",
         "Izin ditolak, foto tidak akan disimpan ke galeri publik."
       );
-      return openCamera(false);
+      return await openKTPBackupCamera(false);
     }
   } catch (e) {
-    console.log(e);
+    console.log("Permission Error:", e);
+    return null;
   }
 };
 
-const openCamera = (save: boolean) => {
-  launchCamera(
-    {
-      mediaType: "photo",
-      saveToPhotos: save,
-      quality: 0.8,
-    },
-    (res) => {
-      if (res.errorCode) {
-        Alert.alert("Error", res.errorMessage);
+// buka kamera dengan opsi save / no save
+const openKTPBackupCamera = (save: boolean): Promise<string | null> => {
+  return new Promise((resolve) => {
+    launchCamera(
+      {
+        mediaType: "photo",
+        saveToPhotos: save,
+        quality: 0.8,
+      },
+      (res) => {
+        if (res.didCancel) return resolve(null);
+
+        if (res.errorCode) {
+          Alert.alert("Error", res.errorMessage);
+          return resolve(null);
+        }
+
+        const asset = res.assets?.[0];
+        if (!asset) return resolve(null);
+
+        resolve(asset.uri ?? null);
       }
-    }
-  );
+    );
+  });
 };

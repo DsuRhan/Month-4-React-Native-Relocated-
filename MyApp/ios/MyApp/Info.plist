@@ -48,6 +48,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Kami membutuhkan Face ID untuk keamanan login.</string>
 
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
