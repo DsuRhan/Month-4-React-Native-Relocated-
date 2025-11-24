@@ -1,7 +1,20 @@
 // src/screens/LoginScreen.tsx
-import React, { useState } from "react";
-import { View, Text, TextInput, Button, StyleSheet } from "react-native";
-import { saveToken } from "../storage/auth";
+
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  StyleSheet,
+  Alert,
+} from "react-native";
+
+import {
+  saveToken,
+  loginCepat,
+  detectBiometryType,
+} from "../storage/auth";
 
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -13,41 +26,93 @@ const LoginScreen: React.FC = () => {
   const [u, setU] = useState("");
   const [p, setP] = useState("");
   const [msg, setMsg] = useState("");
+  const [biometryType, setBiometryType] = useState<any>(null);
 
   const nav = useNavigation<Nav>();
 
- const submit = async () => {
-  try {
-    // login bebas — u & p boleh string apa saja
-    if (!u || !p) {
-      setMsg("Masukkan username & password dulu.");
+  // DETECT BIOMETRIC TYPE
+  useEffect(() => {
+    detectBiometryType().then((type) => {
+      setBiometryType(type);
+    });
+  }, []);
+
+  // --------------------------
+  // SUBMIT (login manual)
+  // --------------------------
+  const submit = async () => {
+    try {
+      if (!u || !p) {
+        setMsg("Masukkan username & password dulu.");
+        return;
+      }
+
+      const fakeToken = `token-${Date.now()}`;
+      await saveToken(fakeToken);
+
+      setMsg("Login berhasil.");
+
+      nav.reset({
+        index: 0,
+        routes: [{ name: "Gate" }],
+      });
+    } catch (e: any) {
+      console.log("login err", e?.message || e);
+      setMsg("Login gagal.");
+    }
+  };
+
+  // --------------------------
+  // LOGIN CEPAT BIOMETRIK
+  // --------------------------
+  const quickLogin = async () => {
+    const token = await loginCepat();
+    if (!token) {
+      Alert.alert("Gagal", "Login cepat dibatalkan.");
       return;
     }
-
-    // generate token sederhana
-    const fakeToken = `token-${Date.now()}`;
-
-    await saveToken(fakeToken);
-    setMsg("Login berhasil.");
 
     nav.reset({
       index: 0,
       routes: [{ name: "Gate" }],
     });
-
-  } catch (e: any) {
-    console.log("login err", e?.message || e);
-    setMsg("Login gagal.");
-  }
-};
-
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-      <TextInput placeholder="username" value={u} onChangeText={setU} style={styles.input} />
-      <TextInput placeholder="password" value={p} secureTextEntry onChangeText={setP} style={styles.input} />
+
+      <TextInput
+        placeholder="username"
+        value={u}
+        onChangeText={setU}
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="password"
+        secureTextEntry
+        value={p}
+        onChangeText={setP}
+        style={styles.input}
+      />
+
       <Button title="Login" onPress={submit} />
+
+      {/* ------------------------ */}
+      {/* LOGIN CEPAT BUTTON */}
+      {/* ------------------------ */}
+      <View style={{ marginTop: 10 }}>
+        <Button
+          title={
+            biometryType === "FaceID"
+              ? "Login Cepat (Face ID)"
+              : "Login Cepat (Biometrik)"
+          }
+          onPress={quickLogin}
+        />
+      </View>
+
       <Text style={{ marginTop: 8 }}>{msg}</Text>
     </View>
   );
